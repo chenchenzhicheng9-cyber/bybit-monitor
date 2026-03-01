@@ -130,13 +130,7 @@ def run_bot():
 
 # ===== Render 啟動入口 =====
 if __name__ == "__main__":
-    print("Bot starting...")
+    print("BOT START")
+    run_bot()
 
-    # 先啟動 bot thread
-    bot_thread = threading.Thread(target=run_bot)
-    bot_thread.daemon = True
-    bot_thread.start()
-
-    # 再啟動 Flask
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), use_reloader=False)
-
+  
