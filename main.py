@@ -114,6 +114,12 @@ def run_bot():
     send_telegram("🚀 Bot 已啟動，策略監控開始")
     while True:
         try:
+            # ===== 測試通知 (每5分鐘一次) =====
+            now = time.time()
+            if now - last_test_time > 300:
+                send_telegram("🧪 測試通知：Bot 仍在線上")
+                last_test_time = now
+
             df_data = {}
             for symbol in SYMBOLS:
                 df = get_klines(symbol)
@@ -133,5 +139,6 @@ if __name__ == "__main__":
     print("BOT START")
     threading.Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
 
 
