@@ -130,11 +130,5 @@ def run_bot():
 # ===== Render 啟動入口 =====
 if __name__ == "__main__":
     print("Bot starting...")
-    run_bot()
-
-
-
-
-
-
-
+    threading.Thread(target=run_bot).start()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
