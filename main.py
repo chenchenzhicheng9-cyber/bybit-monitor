@@ -32,12 +32,17 @@ tz = pytz.timezone("Asia/Taipei")
 notified_levels = {}
 
 # ===== Telegram 發送 =====
-def send_telegram(msg):
-    if not TELEGRAM_TOKEN or not CHAT_ID:
-        print("Telegram token missing")
-        return
+def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": CHAT_ID, "text": msg})
+    data = {
+        "chat_id": CHAT_ID,
+        "text": message
+    }
+    try:
+        r = requests.post(url, data=data)
+        print("Telegram response:", r.text)
+    except Exception as e:
+        print("Telegram error:", e)
 
 # ===== 取得 K線 =====
 def get_klines(symbol):
@@ -126,6 +131,7 @@ def run_bot():
 if __name__ == "__main__":
     threading.Thread(target=run_bot, daemon=True).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
 
 
 
