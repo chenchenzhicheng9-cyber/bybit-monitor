@@ -111,7 +111,7 @@ def check_smt(df_dict):
 # ===== 主監控程式 =====
 def run_bot():
     print("RUN_BOT EXECUTED")
-    send_telegram("🚀 Bot 已啟動，策略監控開始")
+    send_telegram("🚀 Bot 已啟動，市場監控開始")
 
     last_test_time = 0
 
@@ -120,41 +120,40 @@ def run_bot():
             # ===== 每5分鐘確認 Bot 活著 =====
             now = time.time()
             if now - last_test_time > 300:
-                send_telegram("🧪 測試通知：Bot 仍在線上")
+                send_telegram("🧪 Bot 在線中")
                 last_test_time = now
 
-            # ===== 抓三個永續市場 =====
-            df_data = {}
-
+            # ===== 監控三個幣 =====
             for symbol in SYMBOLS:
                 df = get_klines(symbol)
-                df_data[symbol] = df
 
-                # ===== 突破提醒 =====
                 high_now = df["high"].iloc[-1]
                 high_prev = df["high"].iloc[-2]
 
                 low_now = df["low"].iloc[-1]
                 low_prev = df["low"].iloc[-2]
 
+                close_now = df["close"].iloc[-1]
+                close_prev = df["close"].iloc[-2]
+
+                volume_now = df["volume"].iloc[-1]
+                volume_prev = df["volume"].iloc[-2]
+
+                # ===== 市場活動提醒 =====
+                if close_now > close_prev * 1.003:
+                    send_telegram(f"🚀 {symbol} 強勢上漲K")
+
+                if close_now < close_prev * 0.997:
+                    send_telegram(f"⚠️ {symbol} 強勢下跌K")
+
                 if high_now > high_prev:
-                    send_telegram(f"🚀 {symbol} 創短線新高")
+                    send_telegram(f"📈 {symbol} 創短線新高")
 
                 if low_now < low_prev:
-                    send_telegram(f"⚠️ {symbol} 跌破短線低點")
+                    send_telegram(f"📉 {symbol} 跌破短線低點")
 
-            # ===== SMT Divergence =====
-            eth = df_data["ETHUSDT"]
-            sol = df_data["SOLUSDT"]
-
-            eth_high = eth["high"].iloc[-1]
-            eth_prev = eth["high"].iloc[-2]
-
-            sol_high = sol["high"].iloc[-1]
-            sol_prev = sol["high"].iloc[-2]
-
-            if eth_high > eth_prev and sol_high <= sol_prev:
-                send_telegram("📉 SMT Bearish：ETH創高 SOL沒創")
+                if volume_now > volume_prev * 1.5:
+                    send_telegram(f"🔥 {symbol} 成交量爆發")
 
             print("Checked at", datetime.now())
 
@@ -162,12 +161,12 @@ def run_bot():
             print("Error:", e)
 
         time.sleep(CHECK_INTERVAL)
-
 # ===== Render 啟動入口 =====
 if __name__ == "__main__":
     print("BOT START")
     threading.Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
 
 
 
