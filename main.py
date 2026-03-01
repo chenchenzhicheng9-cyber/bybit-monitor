@@ -112,6 +112,9 @@ def check_smt(df_dict):
 def run_bot():
     print("RUN_BOT EXECUTED")
     send_telegram("🚀 Bot 已啟動，策略監控開始")
+
+    last_test_time = 0
+    
     while True:
         try:
             # ===== 測試通知 (每5分鐘一次) =====
@@ -139,6 +142,7 @@ if __name__ == "__main__":
     print("BOT START")
     threading.Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
 
 
 
