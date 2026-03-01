@@ -15,36 +15,27 @@ def home():
     return "Bot running"
 
 # ===== Telegram 設定 =====
-TELEGRAM_TOKEN = ("8602049522:AAF91zldayTlXuoBtMKskpC0vR123zk-Ftw")
-CHAT_ID = ("8132526624")
+TELEGRAM_TOKEN = "你的TOKEN"
+CHAT_ID = "你的CHATID"
 
 # ===== 交易設定 =====
 SYMBOLS = ["ETHUSDT", "SOLUSDT", "DOGEUSDT"]
 INTERVAL = "5"
 CHECK_INTERVAL = 300
 
-ASIA_START = 8
-ASIA_END = 12
-LONDON_START = 14
-LONDON_END = 20
-
 tz = pytz.timezone("Asia/Taipei")
-notified_levels = {}
 
 # ===== Telegram 發送 =====
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    data = {
-        "chat_id": CHAT_ID,
-        "text": message
-    }
+    data = {"chat_id": CHAT_ID, "text": message}
     try:
         r = requests.post(url, data=data)
-        print("Telegram response:", r.text)
+        print("Telegram:", r.text)
     except Exception as e:
         print("Telegram error:", e)
 
-# ===== 取得 K線 =====
+# ===== 取得 Bybit K線 =====
 def get_klines(symbol):
     url = "https://api.bybit.com/v5/market/kline"
     params = {
@@ -59,54 +50,36 @@ def get_klines(symbol):
     df = pd.DataFrame(data, columns=[
         "timestamp","open","high","low","close","volume","turnover"
     ])
+
     df["timestamp"] = pd.to_datetime(df["timestamp"].astype(float), unit="ms")
     df = df.sort_values("timestamp")
-    df = df.astype({"high":float,"low":float,"close":float})
+
+    df = df.astype({
+        "high": float,
+        "low": float,
+        "close": float,
+        "volume": float
+    })
+
     return df
-
-# ===== 計算區間高低 =====
-def get_session_high_low(df, start_hour, end_hour):
-    df["hour"] = df["timestamp"].dt.tz_localize("UTC").dt.tz_convert(tz).dt.hour
-    session_df = df[(df["hour"] >= start_hour) & (df["hour"] < end_hour)]
-    if len(session_df) == 0:
-        return None, None
-    return session_df["high"].max(), session_df["low"].min()
-
-# ===== 突破檢查 =====
-def check_break(symbol, df):
-    asia_high, asia_low = get_session_high_low(df, ASIA_START, ASIA_END)
-    london_high, london_low = get_session_high_low(df, LONDON_START, LONDON_END)
-    current_price = df.iloc[-1]["close"]
-
-    for name, high, low in [
-        ("Asia", asia_high, asia_low),
-        ("London", london_high, london_low)
-    ]:
-        if high and current_price > high:
-            key = f"{symbol}_{name}_high"
-            if key not in notified_levels:
-                send_telegram(f"{symbol} 突破 {name} 高點 🔥")
-                notified_levels[key] = True
-
-        if low and current_price < low:
-            key = f"{symbol}_{name}_low"
-            if key not in notified_levels:
-                send_telegram(f"{symbol} 跌破 {name} 低點 ❄️")
-                notified_levels[key] = True
 
 # ===== SMT 背離 =====
 def check_smt(df_dict):
-    eth = df_dict["ETHUSDT"]
-    sol = df_dict["SOLUSDT"]
+    try:
+        eth = df_dict["ETHUSDT"]
+        sol = df_dict["SOLUSDT"]
 
-    eth_high = eth["high"].iloc[-1]
-    sol_high = sol["high"].iloc[-1]
+        eth_high = eth["high"].iloc[-1]
+        eth_prev = eth["high"].iloc[-2]
 
-    eth_prev = eth["high"].iloc[-2]
-    sol_prev = sol["high"].iloc[-2]
+        sol_high = sol["high"].iloc[-1]
+        sol_prev = sol["high"].iloc[-2]
 
-    if eth_high > eth_prev and sol_high <= sol_prev:
-        send_telegram("SMT Bearish Divergence ⚠️ ETH創高 SOL未創高")
+        if eth_high > eth_prev and sol_high <= sol_prev:
+            send_telegram("⚠️ SMT Bearish：ETH創高但SOL沒創")
+
+    except:
+        pass
 
 # ===== 主監控程式 =====
 def run_bot():
@@ -123,9 +96,11 @@ def run_bot():
                 send_telegram("🧪 Bot 在線中")
                 last_test_time = now
 
-            # ===== 監控三個幣 =====
+            df_dict = {}
+
             for symbol in SYMBOLS:
                 df = get_klines(symbol)
+                df_dict[symbol] = df
 
                 high_now = df["high"].iloc[-1]
                 high_prev = df["high"].iloc[-2]
@@ -140,10 +115,11 @@ def run_bot():
                 volume_prev = df["volume"].iloc[-2]
 
                 # ===== 市場活動提醒 =====
-                if close_now > close_prev * 1.003:
+
+                if close_now > close_prev * 1.001:
                     send_telegram(f"🚀 {symbol} 強勢上漲K")
 
-                if close_now < close_prev * 0.997:
+                if close_now < close_prev * 0.999:
                     send_telegram(f"⚠️ {symbol} 強勢下跌K")
 
                 if high_now > high_prev:
@@ -152,8 +128,11 @@ def run_bot():
                 if low_now < low_prev:
                     send_telegram(f"📉 {symbol} 跌破短線低點")
 
-                if volume_now > volume_prev * 1.5:
+                if volume_now > volume_prev * 1.3:
                     send_telegram(f"🔥 {symbol} 成交量爆發")
+
+            # SMT 背離
+            check_smt(df_dict)
 
             print("Checked at", datetime.now())
 
@@ -161,14 +140,9 @@ def run_bot():
             print("Error:", e)
 
         time.sleep(CHECK_INTERVAL)
+
 # ===== Render 啟動入口 =====
 if __name__ == "__main__":
     print("BOT START")
     threading.Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
-
-
-
-
-
-
