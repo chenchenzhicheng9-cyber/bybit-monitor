@@ -15,8 +15,8 @@ def home():
     return "Bot running"
 
 # ===== Telegram 設定 =====
-TELEGRAM_TOKEN = "你的TOKEN"
-CHAT_ID = "你的CHATID"
+TELEGRAM_TOKEN = "8602049522:AAF91zldayTlXuoBtMKskpC0vR123zk-Ftw"
+CHAT_ID = "8132526624"
 
 # ===== 交易設定 =====
 SYMBOLS = ["ETHUSDT", "SOLUSDT", "DOGEUSDT"]
@@ -146,3 +146,4 @@ if __name__ == "__main__":
     print("BOT START")
     threading.Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
