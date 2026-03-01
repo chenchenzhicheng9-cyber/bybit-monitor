@@ -110,6 +110,7 @@ def check_smt(df_dict):
 
 # ===== 主監控程式 =====
 def run_bot():
+    print("RUN_BOT EXECUTED")
     send_telegram("🚀 Bot 已啟動，策略監控開始")
     while True:
         try:
@@ -138,3 +139,4 @@ if __name__ == "__main__":
 
     # 再啟動 Flask
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), use_reloader=False)
+
