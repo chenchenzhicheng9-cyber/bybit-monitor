@@ -107,6 +107,7 @@ def check_smt(df_dict):
 def run_bot():
     while True:
         try:
+            send_telegram("🚀 Bot測試成功，策略監控已啟動")
             df_data = {}
             for symbol in SYMBOLS:
                 df = get_klines(symbol)
@@ -125,5 +126,6 @@ def run_bot():
 if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
 
 
