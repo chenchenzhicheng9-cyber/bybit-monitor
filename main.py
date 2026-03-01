@@ -12,8 +12,8 @@ app = Flask(__name__)
 def home():
     return "Bot running"
 
-TELEGRAM_TOKEN = "你的TOKEN"
-CHAT_ID = "你的CHATID"
+TELEGRAM_TOKEN = "8602049522:AAF91zldayTlXuoBtMKskpC0vR123zk-Ftw"
+CHAT_ID = "8132526624"
 
 SYMBOLS = ["ETHUSDT", "SOLUSDT", "DOGEUSDT"]
 INTERVAL = "5"
@@ -115,3 +115,4 @@ def run_bot():
 if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
