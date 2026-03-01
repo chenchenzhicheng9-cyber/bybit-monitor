@@ -114,22 +114,48 @@ def run_bot():
     send_telegram("🚀 Bot 已啟動，策略監控開始")
 
     last_test_time = 0
-    
+
     while True:
         try:
-            # ===== 測試通知 (每5分鐘一次) =====
+            # ===== 每5分鐘確認 Bot 活著 =====
             now = time.time()
             if now - last_test_time > 300:
                 send_telegram("🧪 測試通知：Bot 仍在線上")
                 last_test_time = now
 
+            # ===== 抓三個永續市場 =====
             df_data = {}
+
             for symbol in SYMBOLS:
                 df = get_klines(symbol)
                 df_data[symbol] = df
-                check_break(symbol, df)
 
-            check_smt(df_data)
+                # ===== 突破提醒 =====
+                high_now = df["high"].iloc[-1]
+                high_prev = df["high"].iloc[-2]
+
+                low_now = df["low"].iloc[-1]
+                low_prev = df["low"].iloc[-2]
+
+                if high_now > high_prev:
+                    send_telegram(f"🚀 {symbol} 創短線新高")
+
+                if low_now < low_prev:
+                    send_telegram(f"⚠️ {symbol} 跌破短線低點")
+
+            # ===== SMT Divergence =====
+            eth = df_data["ETHUSDT"]
+            sol = df_data["SOLUSDT"]
+
+            eth_high = eth["high"].iloc[-1]
+            eth_prev = eth["high"].iloc[-2]
+
+            sol_high = sol["high"].iloc[-1]
+            sol_prev = sol["high"].iloc[-2]
+
+            if eth_high > eth_prev and sol_high <= sol_prev:
+                send_telegram("📉 SMT Bearish：ETH創高 SOL沒創")
+
             print("Checked at", datetime.now())
 
         except Exception as e:
@@ -142,6 +168,7 @@ if __name__ == "__main__":
     print("BOT START")
     threading.Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
 
 
 
