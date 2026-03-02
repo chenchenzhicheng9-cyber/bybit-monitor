@@ -24,9 +24,24 @@ def send(msg):
     except:
         pass
 
+# ===== 翻譯函式（免費 Google 翻譯 API）=====
+def translate(text):
+    try:
+        url = "https://translate.googleapis.com/translate_a/single"
+        params = {
+            "client": "gtx",
+            "sl": "auto",
+            "tl": "zh-TW",
+            "dt": "t",
+            "q": text
+        }
+        r = requests.get(url, params=params, timeout=10).json()
+        return r[0][0][0]
+    except:
+        return text
+
 sent_news = set()
 
-# RSS新聞源（完全公開）
 RSS_FEEDS = [
     "https://cointelegraph.com/rss",
     "https://www.coindesk.com/arc/outboundfeeds/rss/",
@@ -60,18 +75,20 @@ def fetch_news():
     return alerts
 
 def run_bot():
-    send("📡 情報Bot啟動（RSS版本）")
+    send("📡 情報Bot啟動（中文翻譯版）")
 
     while True:
         try:
             news = fetch_news()
+
             for n in news:
-                send(f"🧠 市場情報:\n{n}")
+                zh = translate(n)
+                send(f"🧠 市場情報\n\n🇺🇸 {n}\n🇹🇼 {zh}")
 
         except Exception as e:
             send(f"❌ 情報錯誤: {e}")
 
-        time.sleep(900)  # 每15分鐘
+        time.sleep(900)
 
 if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
