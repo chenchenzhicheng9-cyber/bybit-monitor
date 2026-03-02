@@ -1,91 +1,97 @@
 from flask import Flask
-import threading
 import requests
-import pandas as pd
 import time
-from datetime import datetime
+import threading
 import os
 
+# ===== Flask 保持 Render 活著 =====
 app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "Bot running"
+    return "News bot running"
 
-TELEGRAM_TOKEN = "8602049522:AAF91zldayTlXuoBtMKskpC0vR123zk-Ftw"
+# ===== Telegram 設定 =====
+TOKEN = "8602049522:AAF91zldayTlXuoBtMKskpC0vR123zk-Ftw"
 CHAT_ID = "8132526624"
 
-SYMBOLS = ["ETHUSDT","SOLUSDT","DOGEUSDT"]
-INTERVAL = "5"
-CHECK_INTERVAL = 300
-
-def send_telegram(msg):
+def send(msg):
     try:
         requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
             data={"chat_id": CHAT_ID, "text": msg},
             timeout=10
         )
     except:
         pass
 
-# 🔥 改這裡：用 Bytick API
-def get_klines(symbol):
-    url = "https://api.bytick.com/v5/market/kline"
+# ===== 避免重複通知 =====
+sent_news = set()
 
-    params = {
-        "category": "linear",
-        "symbol": symbol,
-        "interval": INTERVAL,
-        "limit": 200
-    }
+# ===== 抓 Crypto 市場新聞 =====
+def fetch_crypto_news():
+    url = "https://cryptopanic.com/api/v1/posts/?auth_token=demo&public=true"
+    r = requests.get(url, timeout=10).json()
 
-    r = requests.get(url, params=params, timeout=10)
+    alerts = []
+    for post in r["results"][:10]:
+        title = post["title"]
 
-    if r.status_code != 200:
-        raise Exception(f"HTTP {r.status_code}")
+        # 過濾重要關鍵字
+        keywords = [
+            "ETF","SEC","Ban","Regulation","Hack","Bank",
+            "Inflation","Interest","War","Fed","Rate",
+            "Gold","Crisis","Liquidity"
+        ]
 
-    data = r.json()["result"]["list"]
+        if any(k.lower() in title.lower() for k in keywords):
+            if title not in sent_news:
+                alerts.append(title)
+                sent_news.add(title)
 
-    df = pd.DataFrame(data, columns=[
-        "timestamp","open","high","low","close","volume","turnover"
-    ])
+    return alerts
 
-    df["timestamp"] = pd.to_datetime(df["timestamp"].astype(float), unit="ms")
-    df = df.sort_values("timestamp")
-    df = df.astype({
-        "high": float,
-        "low": float,
-        "close": float,
-        "volume": float
-    })
+# ===== 抓總經新聞 =====
+def fetch_macro_news():
+    url = "https://newsapi.org/v2/top-headlines?category=business&language=en&apiKey=demo"
+    # demo key會有些限制，但能測試
 
-    return df
+    try:
+        r = requests.get(url, timeout=10).json()
+    except:
+        return []
 
+    alerts = []
+    if "articles" in r:
+        for art in r["articles"][:5]:
+            title = art["title"]
+            if title not in sent_news:
+                alerts.append(title)
+                sent_news.add(title)
+
+    return alerts
+
+# ===== 主循環 =====
 def run_bot():
-    send_telegram("🚀 Bot 已啟動")
+    send("📡 情報Bot已啟動")
 
     while True:
         try:
-            for symbol in SYMBOLS:
-                df = get_klines(symbol)
+            crypto_news = fetch_crypto_news()
+            macro_news = fetch_macro_news()
 
-                close_now = df["close"].iloc[-1]
-                close_prev = df["close"].iloc[-2]
+            for news in crypto_news:
+                send(f"🪙 Crypto重大消息:\n{news}")
 
-                if close_now > close_prev * 1.002:
-                    send_telegram(f"🚀 {symbol} 上漲動能")
-
-                if close_now < close_prev * 0.998:
-                    send_telegram(f"⚠️ {symbol} 下跌動能")
-
-            print("Checked", datetime.now())
+            for news in macro_news:
+                send(f"🌍 總經消息:\n{news}")
 
         except Exception as e:
-            send_telegram(f"❌ Bot error: {e}")
+            send(f"❌ 情報Bot錯誤: {e}")
 
-        time.sleep(CHECK_INTERVAL)
+        time.sleep(1800)  # 每30分鐘
 
+# ===== Render 啟動 =====
 if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
